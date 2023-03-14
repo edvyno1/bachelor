@@ -1,1 +1,1 @@
-flask --app api run
+flask run
