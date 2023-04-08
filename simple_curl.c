@@ -7,6 +7,7 @@
 #include <string.h>
  
 #define CODE_SIZE 6
+#define CODE_TRIES 3
 
 int converse( pam_handle_t *pamh, int nargs, struct pam_message **message, struct pam_response **response ) {
 	int retval ;
@@ -104,6 +105,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
         
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
         printf(data);
+        free(data);
         res = curl_easy_perform(curl);
         if(res != CURLE_OK)
         printf("curl_easy_perform() failed: %s\n",
@@ -112,7 +114,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
     }
     curl_global_cleanup();
 
-    for (int i = 0; i < 3 ; i++)
+    for (int i = 0; i < CODE_TRIES ; i++)
     {
         pmsg[0] = &msg[0] ;
         msg[0].msg_style = PAM_PROMPT_ECHO_ON ;
@@ -141,7 +143,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
         } else {
             /* wrong code */
             free(input);
-            if (i != 2)
+            if (i != CODE_TRIES-1)
             {
                 struct pam_message *incor, incmsg;
                 struct pam_response *r;
