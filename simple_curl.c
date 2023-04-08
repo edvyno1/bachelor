@@ -8,10 +8,18 @@
  
 #define CODE_SIZE 6
 
-int generate_mfa_code()
-{
+int converse( pam_handle_t *pamh, int nargs, struct pam_message **message, struct pam_response **response ) {
+	int retval ;
+	struct pam_conv *conv ;
 
+	retval = pam_get_item( pamh, PAM_CONV, (const void **) &conv ) ; 
+	if( retval==PAM_SUCCESS ) {
+		retval = conv->conv( nargs, (const struct pam_message **) message, response, conv->appdata_ptr ) ;
+	}
+
+	return retval ;
 }
+
 static struct pam_conv conv = {
     misc_conv,
     NULL
@@ -30,6 +38,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
 {
     int retval;
     const char* pUsername;
+
+    char *input ;
+	struct pam_message msg[1],*pmsg[1];
+	struct pam_response *resp;
 
     pam_get_user(pamh, &pUsername, "Username: ");
 
@@ -55,11 +67,11 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
     return retval;
     }
 
-    if (pam_end(pamh,retval) != PAM_SUCCESS) {     /* close Linux-PAM */
-	pamh = NULL;
-	printf("check_user: failed to release authenticator\n");
-	exit(1);
-    }
+    // if (pam_end(pamh,retval) != PAM_SUCCESS) {     /* close Linux-PAM */
+	// pamh = NULL;
+	// printf("check_user: failed to release authenticator\n");
+	// exit(1);
+    // }
 
     char code[CODE_SIZE+1] ;
   	unsigned int random_number ;
@@ -70,23 +82,15 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
 	code[CODE_SIZE] = 0 ;
     printf(code);
 
-
     CURL *curl;
     CURLcode res;
     
-    /* In windows, this will init the winsock stuff */
     curl_global_init(CURL_GLOBAL_ALL);
     
-    /* get a curl handle */
     curl = curl_easy_init();
     if(curl) {
-        /* First set the URL that is about to receive our POST. This URL can
-        just as well be an https:// URL if that is what should receive the
-        data. */
         curl_easy_setopt(curl, CURLOPT_URL, "http://127.0.0.1:5000");
-        /* Now specify the POST data */
         char *post_data[4] = {"username=", pUsername, "&code=", code};
-        // strcpy(data, *post_data);
         size_t leng = 0;
         for (int i = 0; i < 4; i++){
             leng = leng + strlen(post_data[i]);
@@ -98,21 +102,60 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
             offset = offset + strlen(post_data[i]);
         }
         
-        
-        // vasprintf(&post_data, "username=%C&code=%C", &pUsername, &code);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
         printf(data);
-    
-        /* Perform the request, res will get the return code */
         res = curl_easy_perform(curl);
-        /* Check for errors */
         if(res != CURLE_OK)
         printf("curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
-    
-        /* always cleanup */
         curl_easy_cleanup(curl);
     }
     curl_global_cleanup();
-    return PAM_SUCCESS;
+
+    for (int i = 0; i < 3 ; i++)
+    {
+        pmsg[0] = &msg[0] ;
+        msg[0].msg_style = PAM_PROMPT_ECHO_ON ;
+        msg[0].msg = "1-time code: " ;
+        resp = NULL ;
+        if( (retval = converse(pamh, 1 , pmsg, &resp))!=PAM_SUCCESS ) {
+            // if this function fails, make sure that ChallengeResponseAuthentication in sshd_config is set to yes
+            return retval ;
+        }
+
+        if( resp ) {
+            if( (flags & PAM_DISALLOW_NULL_AUTHTOK) && resp[0].resp == NULL ) {
+                    free( resp );
+                    return PAM_AUTH_ERR;
+            }
+            input = resp[ 0 ].resp;
+            resp[ 0 ].resp = NULL; 		  				  
+            } else {
+            return PAM_CONV_ERR;
+        }
+
+        if( strcmp(input, code)==0 ) {
+            /* good to go! */
+            free(input);
+            return PAM_SUCCESS;
+        } else {
+            /* wrong code */
+            free(input);
+            if (i != 2)
+            {
+                struct pam_message *incor, incmsg;
+                struct pam_response *r;
+                r = NULL;
+                incor = &incmsg;
+                incmsg.msg_style = PAM_TEXT_INFO;
+                incmsg.msg = "Code is incorrect";
+                
+                converse(pamh, 1, &incor, &r);
+                // printf("Code is incorrect, you have %i tries left", 2-i);
+                continue;
+            }
+        }
+    }
+
+    return PAM_AUTH_ERR;
 }
