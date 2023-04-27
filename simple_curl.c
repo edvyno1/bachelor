@@ -8,6 +8,7 @@
  
 #define CODE_SIZE 6
 #define CODE_TRIES 3
+// define url endpoints here for easier access
 
 int converse( pam_handle_t *pamh, int nargs, struct pam_message **message, struct pam_response **response ) {
 	int retval ;
@@ -90,7 +91,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
     
     curl = curl_easy_init();
     if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, "http://127.0.0.1:5000");
+        curl_easy_setopt(curl, CURLOPT_URL, "http://10.6.5.6:5000");
         char *post_data[4] = {"username=", pUsername, "&code=", code};
         size_t leng = 0;
         for (int i = 0; i < 4; i++){
@@ -105,8 +106,9 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
         
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
         printf(data);
-        free(data);
+        
         res = curl_easy_perform(curl);
+        free(data);
         if(res != CURLE_OK)
         printf("curl_easy_perform() failed: %s\n",
                 curl_easy_strerror(res));
@@ -139,6 +141,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
         if( strcmp(input, code)==0 ) {
             /* good to go! */
             free(input);
+            printf("code is good");
             return PAM_SUCCESS;
         } else {
             /* wrong code */

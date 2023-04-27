@@ -3,8 +3,9 @@ import requests
 from random import randint
 from sys import exit
 from getpass import getpass
+import json
 
-API_BASE="http://10.6.5.13:5000"
+API_BASE="http://10.6.5.6:5000"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -32,6 +33,7 @@ if __name__ == "__main__":
         print("correct! lets go!")
         code = randint(101000, 998999)
         sms_post_data = {"code": code, "phone" : number}
+        # check if status is 200 before checking this
         requests.post(f"{API_BASE}/sendsms", json=sms_post_data)
         try:
             input_code = int(input(f"Code was sent to {number} for confirmation, please enter it: "))
@@ -58,6 +60,14 @@ if __name__ == "__main__":
         register_post_data = {'username' : username, 'password' : password, 'phone' : number}
         response = requests.post(f"{API_BASE}/register", json=register_post_data)
         if response.status_code != 200:
-            print(f"Code expected: 200, received: {response.status_code}, check if URL and creds are correct")
+            print(f"Code expected: 200, received: {response.status_code}, message from server: {response.content}")
         else:
-            print(f"Creation successful for username: {username}, number : {number}")
+            print(f"Creation successful for username: {username}, number : {number}\nHere are the backup codes that you can use to change your settings such as username, password or phone number:")
+            codes : dict = json.loads(response.content.decode("utf-8"))
+            for code in codes.values():
+                print(code)
+            print("MAKE SURE TO WRITE THESE CODES DOWN AS THEY WILL ONLY BE SHOWN NOW AND NEVER AGAIN")
+
+        
+        with open("~/.2fa", "wb") as f:
+            f.write(username)
