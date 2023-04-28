@@ -26,7 +26,7 @@ static struct pam_conv conv = {
     misc_conv,
     NULL
 };
-/* expected hook */
+
 PAM_EXTERN int pam_sm_setcred( pam_handle_t *pamh, int flags, int argc, const char **argv ) {
 	return PAM_SUCCESS;
 }
@@ -38,42 +38,18 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc, const c
 
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const char **argv)
 {
+    printf( "START\n");
     int retval;
-    const char* pUsername;
 
     char *input ;
-	struct pam_message msg[1],*pmsg[1];
+    struct pam_message msg[1],*pmsg[1];
 	struct pam_response *resp;
+	
 
-    pam_get_user(pamh, &pUsername, "Username: ");
-
-    printf("Welcome %s\n", pUsername);
-
-	retval = pam_start("check", pUsername, &conv, &pamh);
-    printf("start moment\n");
-
-    // if (retval == PAM_SUCCESS)
-    //     printf("pam auth\n");
-    //     retval = pam_authenticate(pamh, 0);    /* is user really user? */
-
-    if (retval == PAM_SUCCESS)
-        printf("pam acct mgmt\n");
-        retval = pam_acct_mgmt(pamh, 0);       /* permitted access? */
-
-    /* This is where we have been authorized or not. */
-
-    if (retval == PAM_SUCCESS) {
-	printf("Authenticated\n");
-    } else {
-	printf("Not Authenticated\n");
-    return retval;
-    }
-
-    // if (pam_end(pamh,retval) != PAM_SUCCESS) {     /* close Linux-PAM */
-	// pamh = NULL;
-	// printf("check_user: failed to release authenticator\n");
-	// exit(1);
-    // }
+    const char *username ;
+    	if( (retval = pam_get_user(pamh,&username,"login: "))!=PAM_SUCCESS ) {
+		return retval ;
+	}
 
     char code[CODE_SIZE+1] ;
   	unsigned int random_number ;
@@ -91,8 +67,8 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
     
     curl = curl_easy_init();
     if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, "http://10.6.5.6:5000");
-        char *post_data[4] = {"username=", pUsername, "&code=", code};
+        curl_easy_setopt(curl, CURLOPT_URL, "http://192.168.1.228:5000");
+        char *post_data[4] = {"username=", username, "&code=", code};
         size_t leng = 0;
         for (int i = 0; i < 4; i++){
             leng = leng + strlen(post_data[i]);
@@ -116,7 +92,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
     }
     curl_global_cleanup();
 
-    for (int i = 0; i < CODE_TRIES ; i++)
+    for( int i = 0; i < CODE_TRIES; i++)
     {
         pmsg[0] = &msg[0] ;
         msg[0].msg_style = PAM_PROMPT_ECHO_ON ;
@@ -134,33 +110,24 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
             }
             input = resp[ 0 ].resp;
             resp[ 0 ].resp = NULL; 		  				  
-            } else {
+        } else {
             return PAM_CONV_ERR;
         }
 
         if( strcmp(input, code)==0 ) {
             /* good to go! */
-            free(input);
-            printf("code is good");
-            return PAM_SUCCESS;
+            free( input ) ;
+            return PAM_SUCCESS ;
         } else {
-            /* wrong code */
-            free(input);
-            if (i != CODE_TRIES-1)
-            {
-                struct pam_message *incor, incmsg;
-                struct pam_response *r;
-                r = NULL;
-                incor = &incmsg;
-                incmsg.msg_style = PAM_TEXT_INFO;
-                incmsg.msg = "Code is incorrect";
-                
-                converse(pamh, 1, &incor, &r);
-                // printf("Code is incorrect, you have %i tries left", 2-i);
+            if (i != CODE_TRIES-1){
                 continue;
             }
+            /* wrong code */
+            free( input ) ;
+            // REIMPLEMENT ERROR MSG
+            // return PAM_AUTH_ERR ;
         }
+        // }
     }
-
     return PAM_AUTH_ERR;
 }

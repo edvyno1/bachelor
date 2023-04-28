@@ -14,6 +14,6 @@ Vagrant.configure("2") do |config|
             v.gui = true
             v.memory = 2048
         end
-        g.vm.network "public_network", bridge: 'wlp0s20f3', ip: "192.168.1.201"
+        g.vm.network "public_network", bridge: 'wlp0s20f3', ip: "192.168.1.202"
     end
 end
