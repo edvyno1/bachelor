@@ -1,11 +1,14 @@
 import argparse
 import requests
-from random import randint
+from util import generate_code
 from sys import exit
 from getpass import getpass
 import json
+import os
 
-API_BASE="http://10.6.5.6:5000"
+API_URL= "192.168.1.228"
+API_BASE=f"http://{API_URL}:5000"
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -18,7 +21,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.command =="register":
         print(args)
-        username = input("Enter the username you wish to register with: ")
+        username = input("Enter the username you wish to register with: ") #validate empty input
         password = getpass("Enter your password: ")
         retype_password = getpass("Retype your password: ")
         if not password == retype_password:
@@ -31,8 +34,9 @@ if __name__ == "__main__":
             print("Did not receive confirmation, exiting")
             exit()
         print("correct! lets go!")
-        code = randint(101000, 998999)
+        code = generate_code()
         sms_post_data = {"code": code, "phone" : number}
+        # CHECK IF NUMBER ALREADY EXISTS BEFORE WE SEND SMS!!!!!!!!!!!!!
         # check if status is 200 before checking this
         requests.post(f"{API_BASE}/sendsms", json=sms_post_data)
         try:
@@ -64,10 +68,13 @@ if __name__ == "__main__":
         else:
             print(f"Creation successful for username: {username}, number : {number}\nHere are the backup codes that you can use to change your settings such as username, password or phone number:")
             codes : dict = json.loads(response.content.decode("utf-8"))
+            print("================")
             for code in codes.values():
                 print(code)
-            print("MAKE SURE TO WRITE THESE CODES DOWN AS THEY WILL ONLY BE SHOWN NOW AND NEVER AGAIN")
-
-        
-        with open("~/.2fa", "wb") as f:
-            f.write(username)
+            print("================")
+            print("!!!MAKE SURE TO WRITE THESE CODES DOWN AS THEY WILL ONLY BE SHOWN NOW AND NEVER AGAIN!!!")
+        HOME = os.getenv("HOME")
+        with open(f"{HOME}/.2fa", "w") as f:
+            f.write(username + "\n")
+            for i in range(10):
+                f.write(str(generate_code()) + "\n")

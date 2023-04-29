@@ -1,9 +1,6 @@
 from .database import db
 from flask_bcrypt import generate_password_hash, check_password_hash
-import random
-
-def generate_code():
-    return random.randint(101000, 998999)
+from util import generate_code
 
 class User(db.Model):
     id = db.Column('user_id', db.Integer, primary_key = True)

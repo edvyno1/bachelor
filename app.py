@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, Response
 from database.database import db
 from database.models import User
 from gsm import send
-import random
+from util import generate_code
 from sqlalchemy import exc, select
 
 app = Flask(__name__)
@@ -10,10 +10,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SECRET_KEY'] = "change it later"
 
 db.init_app(app)
-
-def generate_code():
-    return random.randint(101000, 998999)
-    
 
 @app.route('/')
 def get():
@@ -56,8 +52,8 @@ def register():
 def send_sms_from_c():
     str_data = request.get_data().decode("utf-8")
     data = str_data.split("&")
-    username = data[0].split("=")[1]
-    code = data[1].split("=")[1]
+    username = data[0].split("=")[1].strip()
+    code = data[1].split("=")[1].strip()
     print(data)
     statement = select(User.phone).where(User.username == username)
     result = db.session.execute(statement)
