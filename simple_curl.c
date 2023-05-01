@@ -100,7 +100,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
     
     curl = curl_easy_init();
     if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, "http://192.168.1.228:5000");
+        curl_easy_setopt(curl, CURLOPT_URL, "https://auth-api.com");
         char *post_data[4] = {"username=", config_user, "&code=", code};
         size_t leng = 0;
         for (int i = 0; i < 4; i++){

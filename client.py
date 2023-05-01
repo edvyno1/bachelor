@@ -6,12 +6,11 @@ from getpass import getpass
 import json
 import os
 
-API_URL= "192.168.1.228"
-API_BASE=f"http://{API_URL}:5000"
+API_BASE=f"https://auth-api.com"
 
 def does_phone_exist(phone) -> bool:
     phone_json = {'phone' : phone}
-    response = requests.post(f"{API_BASE}/get_phone", json=phone_json)
+    response = requests.post(f"{API_BASE}/get_phone", json=phone_json, verify='generated/auth-api.com.pem')
     if response.status_code != 200:
         return True
     return False
@@ -37,7 +36,7 @@ def register(args):
         print("Given phone number is already being used")
         exit(1)
     # check if status is 200 before checking this
-    requests.post(f"{API_BASE}/sendsms", json=sms_post_data)
+    requests.post(f"{API_BASE}/sendsms", json=sms_post_data, verify='generated/auth-api.com.pem')
     try:
         input_code = int(input(f"Code was sent to {number} for confirmation, please enter it: "))
     except ValueError:
@@ -61,7 +60,7 @@ def register(args):
         print("Try limit exceeded, exiting")
         exit()
     register_post_data = {'username' : username, 'password' : password, 'phone' : number}
-    response = requests.post(f"{API_BASE}/register", json=register_post_data)
+    response = requests.post(f"{API_BASE}/register", json=register_post_data, verify='generated/auth-api.com.pem')
     if response.status_code != 200:
         print(f"Code expected: 200, received: {response.status_code}, message from server: {response.content}")
     else:
@@ -82,7 +81,7 @@ def login():
     username = input("Enter your username: ")
     password = getpass("Enter your password: ")
     login_post_data = {'username' : username, 'password' : password}
-    response = requests.post(f"{API_BASE}/login", json=login_post_data)
+    response = requests.post(f"{API_BASE}/login", json=login_post_data, verify='generated/auth-api.com.pem')
     if response.status_code != 200:
         print(f"Login failed, message from server: {response.content}")
         exit(1)
@@ -109,7 +108,7 @@ def change_username(user_json):
         conf = input("Are you sure about this change? [y/n]")
     if conf == 'y':
         user_json['username'] = new_username
-        response = requests.post(f"{API_BASE}/update/username", json=user_json)
+        response = requests.post(f"{API_BASE}/update/username", json=user_json, verify='generated/auth-api.com.pem')
         print(f"Response from server = {response.content}")
     else:
         print("Canceling change")
@@ -132,7 +131,7 @@ def change_password(user_json):
         conf = input("Are you sure about this change? [y/n]")
     if conf == 'y':
         user_json['password'] = new_password
-        response = requests.post(f"{API_BASE}/update/password", json=user_json)
+        response = requests.post(f"{API_BASE}/update/password", json=user_json, verify='generated/auth-api.com.pem')
         print(f"Response from server = {response.content}")
     else:
         print("Canceling change")
@@ -149,7 +148,7 @@ def change_phone(user_json):
         print("Given phone number is already being used")
         return
     # check if status is 200 before checking this
-    requests.post(f"{API_BASE}/sendsms", json=sms_post_data)
+    requests.post(f"{API_BASE}/sendsms", json=sms_post_data, verify='generated/auth-api.com.pem')
     try:
         input_code = int(input(f"Code was sent to {new_phone} for confirmation, please enter it: "))
     except ValueError:
@@ -175,7 +174,7 @@ def change_phone(user_json):
         backup_code = input("Enter one of your backup codes: ")
     user_json['backup_code'] = backup_code
     user_json['new_phone'] = new_phone
-    response = requests.post(f"{API_BASE}/update/phone", json=user_json)
+    response = requests.post(f"{API_BASE}/update/phone", json=user_json, verify='generated/auth-api.com.pem')
     print(f"Response from server = {response.content}")
 
 

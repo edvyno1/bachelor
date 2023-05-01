@@ -5,6 +5,9 @@ from database.database import db
 from database.models import User
 from gsm import send
 from sqlalchemy import exc, select, update
+from waitress import serve
+import logging
+logging.basicConfig(filename='app.log', encoding='utf-8', level=logging.DEBUG)
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -200,7 +203,7 @@ def login():
 def main():
     with app.app_context():
         db.create_all()
-    app.run(host="0.0.0.0")
+    serve(app, host="0.0.0.0", port=5000, url_scheme='https')
 
 
 if __name__ == '__main__':
