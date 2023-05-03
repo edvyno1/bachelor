@@ -4,6 +4,8 @@
 
 `pip3 install -r requirements.txt`
 
+`clang-format -i pam_2fa.c`
+
 # Flow for installation
 Compile client.py using
 `pyinstaller -F client.py`
