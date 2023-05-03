@@ -1,4 +1,4 @@
 #!/bin/bash
 
-# sudo cp bin/simple_curl.so /lib/security/simple_curl.so
-sudo sed -n -i 'p;23a auth\trequired\t\t\tsimple_curl.so' /etc/pam.d/common-auth
+# sudo cp bin/pam_2fa.so /lib/security/pam_2fa.so
+sudo sed -n -i 'p;23a auth\trequired\t\t\tpam_2fa.so' /etc/pam.d/common-auth

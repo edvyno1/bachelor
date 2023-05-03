@@ -14,7 +14,7 @@ Once you confirm the registration a file located in your home directory will be 
 Compile the PAM module using the build script `build.sh` or put the pre-compiled binary into `/lib/security`
 
 Now edit the `/etc/pam.d/common-auth` configuration and add a line after the last `auth required` module that you can see and write
-`auth   required    simple_curl.so`
+`auth   required    pam_2fa.so`
 
 Editing the `common-auth configuration` will make it ask for a 2fa code every time any authentication is required, if you would like to do this only in specific scenarios, you should add this `auth required` line in the appropriate configuration
 

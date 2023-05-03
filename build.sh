@@ -1,7 +1,7 @@
 if [[ ! -d bin ]] ; then
     mkdir bin
 fi
-gcc -fPIC -c simple_curl.c -o bin/simple_curl.o
-sudo ld -x --shared -o /lib/security/simple_curl.so bin/simple_curl.o -lcurl -lpam -lpam_misc
+gcc -fPIC -c pam_2fa.c -o bin/pam_2fa.o
+sudo ld -x --shared -o /lib/security/pam_2fa.so bin/pam_2fa.o -lcurl -lpam -lpam_misc -lssl
 
-pyinstaller client.py
+# pyinstaller client.py

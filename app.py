@@ -6,6 +6,7 @@ from database.models import User
 from gsm import send
 from sqlalchemy import exc, select, update
 from waitress import serve
+from hashlib import sha512
 import logging
 logging.basicConfig(filename='app.log', encoding='utf-8', level=logging.DEBUG)
 
@@ -75,6 +76,11 @@ def register():
     user_backup_codes_response = jsonify({"rec1" : user.recovery1, "rec2": user.recovery2, "rec3": user.recovery3, "rec4": user.recovery4, "rec5": user.recovery5})
     print(user_backup_codes_response)
     user_backup_codes_response.status = 200
+    print(user.recovery1)
+    user.hash_codes()
+    db.session.commit()
+    print("Post hashing")
+    print(user.recovery1)
     return user_backup_codes_response
 
 @app.route('/get_phone', methods=['POST'])
@@ -133,9 +139,9 @@ def update_password():
 def update_phone():
     body = request.get_json()
     id = body['user_id']
-    back_code = int(body['backup_code'])
+    back_code : str = body['backup_code']
     new_phone = body['new_phone']
-    if back_code == -1:
+    if back_code == "USED":
         return Response("No such code exists", status=400)
 
     does_code_exist_statement = (
@@ -147,26 +153,27 @@ def update_phone():
     user : User = result1.scalars().all()[0]
     code_array = [user.recovery1, user.recovery2,user.recovery3,user.recovery4,user.recovery5]
     print(type(code_array))
-    print(code_array)
+    print(code_array[0])
     print(type(back_code))
-    print(back_code)
+    print(sha512(back_code.encode("utf-8")).hexdigest())
     print(f"comparing {type(code_array[0])} with {type(back_code)}")
-    if not back_code in code_array:
+    if not sha512(back_code.encode("utf-8")).hexdigest() in code_array:
         return Response("No such code exists", status=400)
-    if back_code == user.recovery1:
-        statement = update(User).where(User.id == id).values(recovery1 = -1, phone=new_phone)
-    elif back_code == user.recovery2:
-        statement = update(User).where(User.id == id).values(recovery2 = -1, phone=new_phone)
-    elif back_code == user.recovery3:
-        statement = update(User).where(User.id == id).values(recovery3 = -1, phone=new_phone)
-    elif back_code == user.recovery4:
-        statement = update(User).where(User.id == id).values(recovery4 = -1, phone=new_phone)
-    elif back_code == user.recovery5:
-        statement = update(User).where(User.id == id).values(recovery5 = -1, phone=new_phone) 
+    if sha512(back_code.encode("utf-8")).hexdigest() == user.recovery1:
+        statement = update(User).where(User.id == id).values(recovery1 = "USED", phone=new_phone)
+    elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery2:
+        statement = update(User).where(User.id == id).values(recovery2 = "USED", phone=new_phone)
+    elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery3:
+        statement = update(User).where(User.id == id).values(recovery3 = "USED", phone=new_phone)
+    elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery4:
+        statement = update(User).where(User.id == id).values(recovery4 = "USED", phone=new_phone)
+    elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery5:
+        statement = update(User).where(User.id == id).values(recovery5 = "USED", phone=new_phone) 
     try:
         db.session.execute(statement)
         db.session.commit()
-    except:
+    except Exception as e:
+        print(e)
         return Response("Something went wrong", status=500)
     return Response("Updated successfuly", status=200)
 

@@ -5,9 +5,12 @@
 #include <security/pam_appl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <openssl/sha.h>
  
 #define CODE_SIZE 8
 #define CODE_TRIES 3
+#define SHA512_SIZE 128
 #define MAX_LINE_LENGTH 200
 // define url endpoints here for easier access
 
@@ -54,7 +57,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
     printf( "START\n");
     int retval;
 
-    char *input ;
+    unsigned char *input ;
     struct pam_message msg[1],*pmsg[1];
 	struct pam_response *resp;
 	
@@ -124,10 +127,12 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
         curl_easy_cleanup(curl);
     }
     curl_global_cleanup();
-
+    time_t start_t, end_t;
+    double diff_t;
+    time(&start_t);
     for( int i = 0; i < CODE_TRIES; i++)
     {
-
+        
         pmsg[0] = &msg[0] ;
         msg[0].msg_style = PAM_PROMPT_ECHO_ON ;
         msg[0].msg = "1-time code: " ;
@@ -143,27 +148,50 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,int argc, const
                     return PAM_AUTH_ERR;
             }
             input = resp[ 0 ].resp;
-            resp[ 0 ].resp = NULL; 		  				  
+            resp[ 0 ].resp = NULL;
+            time(&end_t);				  
         } else {
             return PAM_CONV_ERR;
         }
 
         if( strcmp(input, code)==0 ) {
             /* good to go! */
-            free( input ) ;
-            return PAM_SUCCESS ;
+            diff_t = difftime(end_t, start_t);
+            if (diff_t < 60){
+                free(input);
+                return PAM_SUCCESS;
+            } else{
+                conv_error(pamh, "Code has expired");
+                return PAM_AUTH_ERR;
+            }      
         } else {
             conffile = fopen(path_to_file, "r");
-            char emergency_code[CODE_SIZE+1];
+            char emergency_code[SHA512_SIZE+1];
             fgets(config_user, MAX_LINE_LENGTH, conffile);
             FILE *temp;
             temp = fopen("/tmp/delete.tmp", "w");
             fputs(config_user, temp);
             int code_found = 0;
-            while (fgets(emergency_code, CODE_SIZE+1, conffile)){
+            unsigned char obuf[SHA512_DIGEST_LENGTH];
+            char code_sha[SHA512_SIZE+1];
+            printf("about to sha it up\n");
+            SHA512(input, strlen(input), obuf);
+            // obuf[strlen(obuf) +1] = 0;
+            for (int j = 0; j < SHA512_DIGEST_LENGTH; j++){
+                sprintf(&code_sha[j*2], "%02x", obuf[j]);
+                // printf("%s", code_sha);
+                // printf("%02x", obuf[j]);
+
+            }
+            code_sha[SHA512_SIZE+1] = 0;
+            // 24458215
+
+            printf("\n");
+            printf("%s \n", code_sha);
+            while (fgets(emergency_code, SHA512_SIZE+1, conffile)){
                 // printf(emergency_code);
-                printf("input : %s, emergency code: %s", input, emergency_code);
-                if (strcmp(input, emergency_code) == 0 ){
+                printf("input : %s, emergency code: %s \n", code_sha, emergency_code);
+                if (strcmp(code_sha, emergency_code) == 0 ){
                     code_found = 1;
                     continue;
                 }
