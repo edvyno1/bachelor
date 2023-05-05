@@ -30,4 +30,4 @@ Log into a root user as the GSM module requires elevated permissions to access t
 
 Activate the virtual environment as root
 
-Launch the api `python3 app.py`
+Launch the api `python3 run.py main`

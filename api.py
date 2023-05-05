@@ -4,29 +4,26 @@ from flask_limiter.util import get_remote_address
 from database.database import db
 from database.models import User
 from gsm import send
-from sqlalchemy import exc, select, update
-from waitress import serve
+from sqlalchemy import exc, select, update, delete
 from hashlib import sha512
 import logging
-logging.basicConfig(filename='app.log', encoding='utf-8', level=logging.DEBUG)
+
+logging.basicConfig(filename="app.log", encoding="utf-8", level=logging.DEBUG)
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-app.config['SECRET_KEY'] = "change it later"
+app.config["SECRET_KEY"] = "change it later"
 
 limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
+    app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"]
 )
 
-db.init_app(app)
 
-@app.route('/')
+@app.route("/")
 def get():
     return "works"
 
-@app.route('/sendsms', methods=['POST'])
+
+@app.route("/sendsms", methods=["POST"])
 def send_sms_from_python():
     body = request.get_json()
     print(body)
@@ -40,7 +37,8 @@ def send_sms_from_python():
     except:
         return Response("Something went wrong", status=500)
 
-@app.route('/', methods=['POST'])
+
+@app.route("/", methods=["POST"])
 @limiter.exempt
 def send_sms_from_c():
     str_data = request.get_data().decode("utf-8")
@@ -58,7 +56,7 @@ def send_sms_from_c():
         return Response("Something went wrong", status=500)
 
 
-@app.route('/register', methods=['POST'])
+@app.route("/register", methods=["POST"])
 def register():
     body = request.get_json()
     user = User(**body)
@@ -71,9 +69,16 @@ def register():
         return Response("Given username or phone number is already in use", status=400)
     except:
         return Response("Something went wrong", status=500)
-    
-    
-    user_backup_codes_response = jsonify({"rec1" : user.recovery1, "rec2": user.recovery2, "rec3": user.recovery3, "rec4": user.recovery4, "rec5": user.recovery5})
+
+    user_backup_codes_response = jsonify(
+        {
+            "rec1": user.recovery1,
+            "rec2": user.recovery2,
+            "rec3": user.recovery3,
+            "rec4": user.recovery4,
+            "rec5": user.recovery5,
+        }
+    )
     print(user_backup_codes_response)
     user_backup_codes_response.status = 200
     print(user.recovery1)
@@ -83,27 +88,25 @@ def register():
     print(user.recovery1)
     return user_backup_codes_response
 
-@app.route('/get_phone', methods=['POST'])
+
+@app.route("/get_phone", methods=["POST"])
 def check_phone():
     body = request.get_json()
-    phone_nr = body['phone']
+    phone_nr = body["phone"]
     exists = db.session.query(User.id).filter_by(phone=phone_nr).first() is not None
     if exists:
-        return Response("Phone number already in use",status=400)
+        return Response("Phone exists", status=200)
     else:
-        return Response("Unused, good to go", status=200)
+        return Response("No such phone found", status=400)
 
-@app.route('/update/username', methods=['POST'])
+
+@app.route("/update/username", methods=["PUT"])
 def update_username():
     body = request.get_json()
-    id = body['user_id']
-    usrname = body['username']
+    id = body["user_id"]
+    usrname = body["username"]
     try:
-        statement = (
-            update(User)
-            .where(User.id == id)
-            .values(username = usrname)
-        )
+        statement = update(User).where(User.id == id).values(username=usrname)
         db.session.execute(statement)
         db.session.commit()
     except exc.IntegrityError:
@@ -113,20 +116,16 @@ def update_username():
     return Response("Updated successfuly", status=200)
 
 
-@app.route('/update/password', methods=['POST'])
+@app.route("/update/password", methods=["PUT"])
 def update_password():
     body = request.get_json()
-    id = body['user_id']
-    passw = body['password']
-    usr = User("_",password=passw, phone="_")
+    id = body["user_id"]
+    passw = body["password"]
+    usr = User("_", password=passw, phone="_")
     usr.hash_password()
     passw = usr.password
     try:
-        statement = (
-            update(User)
-            .where(User.id == id)
-            .values(password = passw)
-        )
+        statement = update(User).where(User.id == id).values(password=passw)
         db.session.execute(statement)
         db.session.commit()
     except:
@@ -134,24 +133,27 @@ def update_password():
     return Response("Updated successfuly", status=200)
 
 
-@app.route('/update/phone', methods=['POST'])
+@app.route("/update/phone", methods=["PUT"])
 @limiter.limit("2 per minute")
 def update_phone():
     body = request.get_json()
-    id = body['user_id']
-    back_code : str = body['backup_code']
-    new_phone = body['new_phone']
+    id = body["user_id"]
+    back_code: str = body["backup_code"]
+    new_phone = body["new_phone"]
     if back_code == "USED":
         return Response("No such code exists", status=400)
 
-    does_code_exist_statement = (
-        select(User)
-        .where(User.id == id)
-    )
+    does_code_exist_statement = select(User).where(User.id == id)
     print(does_code_exist_statement)
     result1 = db.session.execute(does_code_exist_statement)
-    user : User = result1.scalars().all()[0]
-    code_array = [user.recovery1, user.recovery2,user.recovery3,user.recovery4,user.recovery5]
+    user: User = result1.scalars().all()[0]
+    code_array = [
+        user.recovery1,
+        user.recovery2,
+        user.recovery3,
+        user.recovery4,
+        user.recovery5,
+    ]
     print(type(code_array))
     print(code_array[0])
     print(type(back_code))
@@ -160,15 +162,25 @@ def update_phone():
     if not sha512(back_code.encode("utf-8")).hexdigest() in code_array:
         return Response("No such code exists", status=400)
     if sha512(back_code.encode("utf-8")).hexdigest() == user.recovery1:
-        statement = update(User).where(User.id == id).values(recovery1 = "USED", phone=new_phone)
+        statement = (
+            update(User).where(User.id == id).values(recovery1="USED", phone=new_phone)
+        )
     elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery2:
-        statement = update(User).where(User.id == id).values(recovery2 = "USED", phone=new_phone)
+        statement = (
+            update(User).where(User.id == id).values(recovery2="USED", phone=new_phone)
+        )
     elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery3:
-        statement = update(User).where(User.id == id).values(recovery3 = "USED", phone=new_phone)
+        statement = (
+            update(User).where(User.id == id).values(recovery3="USED", phone=new_phone)
+        )
     elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery4:
-        statement = update(User).where(User.id == id).values(recovery4 = "USED", phone=new_phone)
+        statement = (
+            update(User).where(User.id == id).values(recovery4="USED", phone=new_phone)
+        )
     elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery5:
-        statement = update(User).where(User.id == id).values(recovery5 = "USED", phone=new_phone) 
+        statement = (
+            update(User).where(User.id == id).values(recovery5="USED", phone=new_phone)
+        )
     try:
         db.session.execute(statement)
         db.session.commit()
@@ -177,8 +189,20 @@ def update_phone():
         return Response("Something went wrong", status=500)
     return Response("Updated successfuly", status=200)
 
+@app.route("/delete", methods=["DELETE"])
+def delete_user():
+    body = request.get_json()
+    id = body["user_id"]
+    try:
+        statement = delete(User).where(User.id == id)
+        db.session.execute(statement)
+        db.session.commit()
+    except Exception as e:
+        print(e)
+        return Response("Something went wrong", status=500)
+    return Response("Deleted successfuly", status=200)
 
-@app.route('/login', methods=['POST'])
+@app.route("/login", methods=["POST"])
 def login():
     print("WE ARE IN THE BUILDING")
     print(request.get_json())
@@ -196,24 +220,13 @@ def login():
         print(user_array)
         if not user_array:
             return Response("Username or password is wrong", status=401)
-        user : User = user_array[0]
+        user: User = user_array[0]
         print(type(user))
         print(user)
         if not user.check_password(password):
             return Response("Username or password is wrong", status=401)
-        login_response = jsonify({"user_id" : user.id})
+        login_response = jsonify({"user_id": user.id})
         login_response.status = 200
         return login_response
     except:
         return Response("Username or password is wrong", status=401)
-
-def main():
-    with app.app_context():
-        db.create_all()
-    serve(app, host="0.0.0.0", port=5000, url_scheme='https')
-
-
-if __name__ == '__main__':
-    main()
-    
-    

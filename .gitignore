@@ -8,3 +8,5 @@ todo
 *.spec
 instance
 generated/
+test/test.log
+app.log
