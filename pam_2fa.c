@@ -113,11 +113,15 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
 
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
         printf(data);
-
         res = curl_easy_perform(curl);
         free(data);
         if (res != CURLE_OK)
             printf("curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        long code;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
+        if (code != 200) {
+            conv_error(pamh, "Unable to send code to your phone number");
+        }
         curl_easy_cleanup(curl);
     }
     curl_global_cleanup();
