@@ -7,6 +7,7 @@ from gsm import send
 from sqlalchemy import exc, select, update, delete
 from hashlib import sha512
 import logging
+import asyncio
 
 logging.basicConfig(filename="app.log", encoding="utf-8", level=logging.DEBUG)
 
@@ -48,7 +49,10 @@ def send_sms_from_c():
     print(data)
     statement = select(User.phone).where(User.username == username)
     result = db.session.execute(statement)
-    phone = result.scalars().all()[0]
+    try:
+        phone = result.scalars().all()[0]
+    except IndexError:
+        return Response(f"No user with name - {username} exists", status=401)
     try:
         send(phone, code)
         return Response("Code sent to phone number", status=200)
