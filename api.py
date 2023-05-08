@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, Response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from database.database import db
-from database.models import User
+from database.models import User, RecoveryCodes
 from gsm import send
 from sqlalchemy import exc, select, update, delete
 from hashlib import sha512
@@ -74,22 +74,26 @@ def register():
     except:
         return Response("Something went wrong", status=500)
 
+    recovery = RecoveryCodes(owner=user)
+    db.session.add(recovery)
+    db.session.commit()
     user_backup_codes_response = jsonify(
         {
-            "rec1": user.recovery1,
-            "rec2": user.recovery2,
-            "rec3": user.recovery3,
-            "rec4": user.recovery4,
-            "rec5": user.recovery5,
+            "rec1": recovery.code1,
+            "rec2": recovery.code2,
+            "rec3": recovery.code3,
+            "rec4": recovery.code4,
+            "rec5": recovery.code5,
         }
     )
+    recovery.hash_codes()
     print(user_backup_codes_response)
+    print(user.codes)
+    print(user.codes[0].code1)
     user_backup_codes_response.status = 200
-    print(user.recovery1)
-    user.hash_codes()
+    
     db.session.commit()
     print("Post hashing")
-    print(user.recovery1)
     return user_backup_codes_response
 
 
@@ -151,12 +155,13 @@ def update_phone():
     print(does_code_exist_statement)
     result1 = db.session.execute(does_code_exist_statement)
     user: User = result1.scalars().all()[0]
+    user_codes = user.codes[0]
     code_array = [
-        user.recovery1,
-        user.recovery2,
-        user.recovery3,
-        user.recovery4,
-        user.recovery5,
+        user_codes.code1,
+        user_codes.code2,
+        user_codes.code3,
+        user_codes.code4,
+        user_codes.code5,
     ]
     print(type(code_array))
     print(code_array[0])
@@ -165,28 +170,44 @@ def update_phone():
     print(f"comparing {type(code_array[0])} with {type(back_code)}")
     if not sha512(back_code.encode("utf-8")).hexdigest() in code_array:
         return Response("No such code exists", status=400)
-    if sha512(back_code.encode("utf-8")).hexdigest() == user.recovery1:
+    if sha512(back_code.encode("utf-8")).hexdigest() == user_codes.code1:
         statement = (
-            update(User).where(User.id == id).values(recovery1="USED", phone=new_phone)
+            update(User).where(User.id == id).values(phone=new_phone)
         )
-    elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery2:
-        statement = (
-            update(User).where(User.id == id).values(recovery2="USED", phone=new_phone)
+        statement2 = (
+            update(RecoveryCodes).where(RecoveryCodes.user_id == id).values(code1="USED")
         )
-    elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery3:
+    elif sha512(back_code.encode("utf-8")).hexdigest() == user_codes.code2:
         statement = (
-            update(User).where(User.id == id).values(recovery3="USED", phone=new_phone)
+            update(User).where(User.id == id).values(phone=new_phone)
         )
-    elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery4:
-        statement = (
-            update(User).where(User.id == id).values(recovery4="USED", phone=new_phone)
+        statement2 = (
+            update(RecoveryCodes).where(RecoveryCodes.user_id == id).values(code2="USED")
         )
-    elif sha512(back_code.encode("utf-8")).hexdigest() == user.recovery5:
+    elif sha512(back_code.encode("utf-8")).hexdigest() == user_codes.code3:
         statement = (
-            update(User).where(User.id == id).values(recovery5="USED", phone=new_phone)
+            update(User).where(User.id == id).values(phone=new_phone)
+        )
+        statement2 = (
+            update(RecoveryCodes).where(RecoveryCodes.user_id == id).values(code3="USED")
+        )
+    elif sha512(back_code.encode("utf-8")).hexdigest() == user_codes.code4:
+        statement = (
+            update(User).where(User.id == id).values(phone=new_phone)
+        )
+        statement2 = (
+            update(RecoveryCodes).where(RecoveryCodes.user_id == id).values(code4="USED")
+        )
+    elif sha512(back_code.encode("utf-8")).hexdigest() == user_codes.code5:
+        statement = (
+            update(User).where(User.id == id).values(phone=new_phone)
+        )
+        statement2 = (
+            update(RecoveryCodes).where(RecoveryCodes.user_id == id).values(code5="USED")
         )
     try:
         db.session.execute(statement)
+        db.session.execute(statement2)
         db.session.commit()
     except Exception as e:
         print(e)
