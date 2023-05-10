@@ -44,13 +44,13 @@ PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc,
 
 PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t *pamh, int flags, int argc,
                                 const char **argv) {
-    printf("Acct mgmt\n");
+    // printf("Acct mgmt\n");
     return PAM_SUCCESS;
 }
 
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
                                    const char **argv) {
-    printf("START\n");
+    // printf("START\n");
     int retval;
 
     unsigned char *input;
@@ -61,10 +61,10 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     if ((retval = pam_get_user(pamh, &username, "login: ")) != PAM_SUCCESS) {
         return retval;
     }
-    printf(username);
+    // printf(username);
 
     FILE *conffile;
-    printf("checking user size\n");
+    // printf("checking user size\n");
     size_t usrsize = sizeof(username);
     // printf(usrsize);
 
@@ -81,7 +81,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     char config_user[MAX_LINE_LENGTH];
     fgets(config_user, MAX_LINE_LENGTH, conffile);
     fclose(conffile);
-    printf(config_user);
+    // printf(config_user);
 
     char code[CODE_SIZE + 1];
     unsigned int random_number;
@@ -90,7 +90,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     fclose(urandom);
     snprintf(code, CODE_SIZE + 1, "%u", random_number);
     code[CODE_SIZE] = 0;
-    printf(code);
+    // printf(code);
     CURL *curl;
     CURLcode res;
 
@@ -112,7 +112,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
         }
 
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
-        printf(data);
+        // printf(data);
         res = curl_easy_perform(curl);
         free(data);
         if (res != CURLE_OK)
@@ -172,7 +172,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
             int code_found = 0;
             unsigned char obuf[SHA512_DIGEST_LENGTH];
             char code_sha[SHA512_SIZE + 1];
-            printf("about to sha it up\n");
+            // printf("about to sha it up\n");
             SHA512(input, strlen(input), obuf);
             // obuf[strlen(obuf) +1] = 0;
             for (int j = 0; j < SHA512_DIGEST_LENGTH; j++) {
@@ -183,31 +183,31 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
             code_sha[SHA512_SIZE + 1] = 0;
             // 24458215
 
-            printf("\n");
-            printf("%s \n", code_sha);
+            // printf("\n");
+            // printf("%s \n", code_sha);
             while (fgets(emergency_code, SHA512_SIZE + 1, conffile)) {
                 // printf(emergency_code);
-                printf("input : %s, emergency code: %s \n", code_sha,
-                       emergency_code);
+                // printf("input : %s, emergency code: %s \n", code_sha,
+                    //    emergency_code);
                 if (strcmp(code_sha, emergency_code) == 0) {
                     code_found = 1;
                     continue;
                 }
                 fputs(emergency_code, temp);
             }
-            printf("after while loop\n");
+            // printf("after while loop\n");
             fclose(temp);
             fclose(conffile);
             if (code_found == 1) {
                 remove(path_to_file);
                 rename("/tmp/delete.tmp", path_to_file);
-                printf("after remove and rename about to free\n");
+                // printf("after remove and rename about to free\n");
                 free(input);
                 return PAM_SUCCESS;
             } else {
                 remove("/tmp/delete.tmp");
             }
-            printf("after code found\n");
+            // printf("after code found\n");
 
             if (i != CODE_TRIES - 1) {
                 conv_error(pamh, "Wrong code");

@@ -87,13 +87,13 @@ def register():
         }
     )
     recovery.hash_codes()
-    print(user_backup_codes_response)
-    print(user.codes)
-    print(user.codes[0].code1)
+    # print(user_backup_codes_response)
+    # print(user.codes)
+    # print(user.codes[0].code1)
     user_backup_codes_response.status = 200
     
     db.session.commit()
-    print("Post hashing")
+    # print("Post hashing")
     return user_backup_codes_response
 
 
@@ -163,11 +163,11 @@ def update_phone():
         user_codes.code4,
         user_codes.code5,
     ]
-    print(type(code_array))
-    print(code_array[0])
-    print(type(back_code))
-    print(sha512(back_code.encode("utf-8")).hexdigest())
-    print(f"comparing {type(code_array[0])} with {type(back_code)}")
+    # print(type(code_array))
+    # print(code_array[0])
+    # print(type(back_code))
+    # print(sha512(back_code.encode("utf-8")).hexdigest())
+    # print(f"comparing {type(code_array[0])} with {type(back_code)}")
     if not sha512(back_code.encode("utf-8")).hexdigest() in code_array:
         return Response("No such code exists", status=400)
     if sha512(back_code.encode("utf-8")).hexdigest() == user_codes.code1:
@@ -229,25 +229,25 @@ def delete_user():
 
 @app.route("/login", methods=["POST"])
 def login():
-    print("WE ARE IN THE BUILDING")
-    print(request.get_json())
+    # print("WE ARE IN THE BUILDING")
+    # print(request.get_json())
     body = request.get_json()
-    print("POST BODY EXPERIENCE")
+    # print("POST BODY EXPERIENCE")
     username = body["username"]
     password = body["password"]
-    print("body got\n")
+    # print("body got\n")
     try:
         statement = select(User).where(User.username == username)
-        print("check db\n")
+        # print("check db\n")
         result = db.session.execute(statement)
         user_array = result.scalars().all()
-        print(type(user_array))
-        print(user_array)
+        # print(type(user_array))
+        # print(user_array)
         if not user_array:
             return Response("Username or password is wrong", status=401)
         user: User = user_array[0]
-        print(type(user))
-        print(user)
+        # print(type(user))
+        # print(user)
         if not user.check_password(password):
             return Response("Username or password is wrong", status=401)
         login_response = jsonify({"user_id": user.id})
